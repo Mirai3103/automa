@@ -1,10 +1,10 @@
 <template>
   <ui-card
     v-if="modalState.show"
-    class="group fixed bottom-8 right-8 w-72 border-2 shadow-2xl"
+    class="fixed border-2 shadow-2xl group bottom-8 right-8 w-72"
   >
     <button
-      class="absolute -right-2 -top-2 scale-0 rounded-full bg-white shadow-md transition group-hover:scale-100"
+      class="absolute transition scale-0 bg-white rounded-full shadow-md -right-2 -top-2 group-hover:scale-100"
       @click="closeModal"
     >
       <v-remixicon class="text-gray-600" name="riCloseLine" />

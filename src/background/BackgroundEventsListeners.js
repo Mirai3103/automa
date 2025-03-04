@@ -144,11 +144,11 @@ class BackgroundEventsListeners {
           isFirstTime: true,
           visitWebTriggers: [],
         });
-        await browser.windows.create({
-          type: 'popup',
-          state: 'maximized',
-          url: browser.runtime.getURL('newtab.html#/welcome'),
-        });
+        // await browser.windows.create({
+        //   type: 'popup',
+        //   state: 'maximized',
+        //   url: browser.runtime.getURL('newtab.html#/welcome'),
+        // });
 
         return;
       }

@@ -1,5 +1,5 @@
 import browser from 'webextension-polyfill';
-import { useWorkflowStore } from '@/stores/workflow';
+import { defaultWorkflow, useWorkflowStore } from '@/stores/workflow';
 import { registerWorkflowTrigger } from './workflowTrigger';
 import {
   parseJSON,
@@ -159,6 +159,155 @@ export function importWorkflow(attrs = {}) {
         console.error(error);
         reject(error);
       });
+  });
+}
+
+export function importFromRawJson(jsonData) {
+  return new Promise((resolve, reject) => {
+    try {
+      const workflow =
+        typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+      const workflowStore = useWorkflowStore();
+
+      if (workflow.includedWorkflows) {
+        Object.keys(workflow.includedWorkflows).forEach((workflowId) => {
+          const isWorkflowExists = Boolean(workflowStore.workflows[workflowId]);
+
+          if (isWorkflowExists) return;
+
+          const currentWorkflow = workflow.includedWorkflows[workflowId];
+          currentWorkflow.table =
+            currentWorkflow.table || currentWorkflow.dataColumns;
+          delete currentWorkflow.dataColumns;
+
+          workflowStore.insert(
+            {
+              ...currentWorkflow,
+              id: workflowId,
+              createdAt: Date.now(),
+            },
+            { duplicateId: true }
+          );
+        });
+
+        delete workflow.includedWorkflows;
+      }
+
+      workflow.table = workflow.table || workflow.dataColumns;
+      delete workflow.dataColumns;
+      if (typeof workflow.drawflow === 'string') {
+        workflow.drawflow = parseJSON(workflow.drawflow, {});
+      }
+
+      workflowStore
+        .insert({
+          ...workflow,
+          createdAt: Date.now(),
+        })
+        .then((result) => {
+          Object.values(result).forEach((item) => {
+            const triggerBlock = findTriggerBlock(item.drawflow);
+            registerWorkflowTrigger(item.id, triggerBlock);
+          });
+
+          resolve(result);
+        })
+        .catch((error) => {
+          console.error('Error inserting workflow:', error);
+          reject(error);
+        });
+    } catch (error) {
+      console.error('Error importing workflow from raw JSON:', error);
+      reject(error);
+    }
+  });
+}
+
+export function resetWorkflows(initialState) {
+  const workflow =
+    typeof jsonData === 'string' ? JSON.parse(initialState) : initialState;
+  browser.storage.local.set({ workflows: workflow });
+}
+
+export function importFromRawJsonWithoutPinia(jsonData) {
+  // eslint-disable-next-line no-async-promise-executor
+  return new Promise(async (resolve, reject) => {
+    try {
+      // Parse JSON if it's a string
+      const workflow =
+        typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+
+      // Get current workflows from storage as array
+      const { workflows = [] } = await browser.storage.local.get('workflows');
+      const insertedWorkflows = {};
+      // Get existing workflow IDs for duplication check
+      const existingWorkflowIds = workflows.map((w) => w.id);
+
+      // Handle included workflows
+      if (workflow.includedWorkflows) {
+        Object.keys(workflow.includedWorkflows).forEach((workflowId) => {
+          // Skip if workflow with this ID already exists
+          if (existingWorkflowIds.includes(workflowId)) return;
+
+          const currentWorkflow = workflow.includedWorkflows[workflowId];
+
+          // Data format conversion
+          currentWorkflow.table =
+            currentWorkflow.table || currentWorkflow.dataColumns;
+          delete currentWorkflow.dataColumns;
+
+          // Create default workflow data
+          const defaultData = defaultWorkflow(
+            {
+              ...currentWorkflow,
+              id: workflowId,
+              createdAt: Date.now(),
+            },
+            { duplicateId: true }
+          );
+
+          // Add to workflows array
+          workflows.push(defaultData);
+          insertedWorkflows[workflowId] = defaultData;
+          existingWorkflowIds.push(workflowId);
+        });
+
+        delete workflow.includedWorkflows;
+      }
+
+      // Process main workflow
+      workflow.table = workflow.table || workflow.dataColumns;
+      delete workflow.dataColumns;
+
+      if (typeof workflow.drawflow === 'string') {
+        workflow.drawflow = parseJSON(workflow.drawflow, {});
+      }
+
+      // Create default workflow
+      const defaultData = defaultWorkflow({
+        ...workflow,
+        createdAt: Date.now(),
+      });
+
+      // Add to workflows array
+      workflows.push(defaultData);
+      insertedWorkflows[defaultData.id] = defaultData;
+      // Save to storage
+      await browser.storage.local.set({ workflows });
+
+      // Handle trigger registration for each workflow
+      Object.values(insertedWorkflows).forEach((item) => {
+        const triggerBlock = findTriggerBlock(item.drawflow);
+        if (triggerBlock) {
+          registerWorkflowTrigger(item.id, triggerBlock);
+        }
+      });
+
+      resolve(insertedWorkflows);
+    } catch (error) {
+      console.error('Import from raw JSON failed:', error);
+      reject(error);
+    }
   });
 }
 

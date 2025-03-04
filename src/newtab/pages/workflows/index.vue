@@ -3,13 +3,13 @@
     <h1 class="text-2xl font-semibold capitalize">
       {{ t('common.workflow', 2) }}
     </h1>
-    <div class="mt-8 flex items-start">
-      <div class="sticky top-8 hidden w-60 lg:block">
+    <div class="flex items-start mt-8">
+      <div class="sticky hidden top-8 w-60 lg:block">
         <div class="flex w-full">
           <ui-button
             :title="shortcut['action:new'].readable"
             variant="accent"
-            class="flex-1 rounded-r-none border-r font-semibold"
+            class="flex-1 font-semibold border-r rounded-r-none"
             @click="addWorkflowModal.show = true"
           >
             {{ t('workflow.new') }}
@@ -38,6 +38,13 @@
               <ui-list-item
                 v-close-popover
                 class="cursor-pointer"
+                @click="handleImportRawWorkflow"
+              >
+                Import raw Json
+              </ui-list-item>
+              <ui-list-item
+                v-close-popover
+                class="cursor-pointer"
                 @click="addHostedWorkflow"
               >
                 {{ t('workflow.host.add') }}
@@ -59,11 +66,11 @@
           <ui-expand
             v-if="state.teams.length > 0"
             append-icon
-            header-class="px-4 py-2 rounded-lg mb-1 hoverable w-full flex items-center"
+            header-class="flex items-center w-full px-4 py-2 mb-1 rounded-lg hoverable"
           >
             <template #header>
               <v-remixicon name="riTeamLine" />
-              <span class="ml-4 flex-1 text-left capitalize">
+              <span class="flex-1 ml-4 text-left capitalize">
                 Team Workflows
               </span>
             </template>
@@ -86,11 +93,11 @@
           <ui-expand
             :model-value="true"
             append-icon
-            header-class="px-4 py-2 rounded-lg hoverable w-full flex items-center"
+            header-class="flex items-center w-full px-4 py-2 rounded-lg hoverable"
           >
             <template #header>
               <v-remixicon name="riFlowChart" />
-              <span class="ml-4 flex-1 text-left capitalize">
+              <span class="flex-1 ml-4 text-left capitalize">
                 {{ t('workflow.my') }}
               </span>
             </template>
@@ -139,12 +146,12 @@
         />
       </div>
       <div
-        class="workflows-list flex-1 lg:ml-8"
+        class="flex-1 workflows-list lg:ml-8"
         style="min-height: calc(100vh - 8rem)"
         @dblclick="clearSelectedWorkflows"
       >
         <div class="flex flex-wrap items-center">
-          <div class="flex w-full items-center md:w-auto">
+          <div class="flex items-center w-full md:w-auto">
             <ui-input
               id="search-input"
               v-model="state.query"
@@ -194,7 +201,7 @@
             </ui-popover>
           </div>
           <div class="grow"></div>
-          <div class="mt-4 flex w-full items-center md:mt-0 md:w-auto">
+          <div class="flex items-center w-full mt-4 md:mt-0 md:w-auto">
             <span
               v-tooltip:bottom.group="t('workflow.backupCloud')"
               class="mr-4"
@@ -208,10 +215,10 @@
                 <v-remixicon name="riUploadCloud2Line" />
               </ui-button>
             </span>
-            <div class="workflow-sort flex flex-1 items-center">
+            <div class="flex items-center flex-1 workflow-sort">
               <ui-button
                 icon
-                class="rounded-r-none border-r border-gray-300 dark:border-gray-700"
+                class="border-r border-gray-300 rounded-r-none dark:border-gray-700"
                 @click="
                   state.sortOrder = state.sortOrder === 'asc' ? 'desc' : 'asc'
                 "
@@ -247,7 +254,7 @@
             </ui-select>
           </div>
         </div>
-        <ui-tab-panels v-model="state.activeTab" class="mt-6 flex-1">
+        <ui-tab-panels v-model="state.activeTab" class="flex-1 mt-6">
           <ui-tab-panel value="team" cache>
             <workflows-user-team
               :active="state.activeTab === 'team'"
@@ -279,15 +286,15 @@
         </ui-tab-panels>
         <ui-card
           v-if="workflowStore.isFirstTime"
-          class="first-card relative mt-8 dark:text-gray-200"
+          class="relative mt-8 first-card dark:text-gray-200"
         >
           <v-remixicon
             name="riCloseLine"
-            class="absolute top-4 right-4 cursor-pointer"
+            class="absolute cursor-pointer top-4 right-4"
             @click="workflowStore.isFirstTime = false"
           />
           <p>Create your first workflow by recording your actions:</p>
-          <ol class="list-inside list-decimal">
+          <ol class="list-decimal list-inside">
             <li>Open your browser and go to your destination URL</li>
             <li>
               Click the "Record workflow" button, and do your simple repetitive
@@ -322,7 +329,7 @@
         v-model="addWorkflowModal.name"
         :placeholder="t('common.name')"
         autofocus
-        class="mb-4 w-full"
+        class="w-full mb-4"
         @keyup.enter="
           addWorkflowModal.type === 'manual'
             ? addWorkflow()
@@ -381,7 +388,11 @@ import { useTeamWorkflowStore } from '@/stores/teamWorkflow';
 import { useHostedWorkflowStore } from '@/stores/hostedWorkflow';
 import { registerWorkflowTrigger } from '@/utils/workflowTrigger';
 import { isWhitespace, findTriggerBlock } from '@/utils/helper';
-import { importWorkflow, getWorkflowPermissions } from '@/utils/workflowData';
+import {
+  importWorkflow,
+  getWorkflowPermissions,
+  importFromRawJson,
+} from '@/utils/workflowData';
 import recordWorkflow from '@/newtab/utils/startRecordWorkflow';
 import WorkflowsLocal from '@/components/newtab/workflows/WorkflowsLocal.vue';
 import WorkflowsShared from '@/components/newtab/workflows/WorkflowsShared.vue';
@@ -443,6 +454,7 @@ function initRecordWorkflow() {
   addWorkflowModal.show = true;
   addWorkflowModal.type = 'recording';
 }
+
 function startRecordWorkflow() {
   recordWorkflow({
     name: addWorkflowModal.name,
@@ -555,6 +567,28 @@ async function openImportDialog() {
   } catch (error) {
     console.error(error);
   }
+}
+function handleImportRawWorkflow() {
+  dialog.prompt({
+    async: true,
+    inputType: 'textarea',
+    okText: t('common.add'),
+    title: 'Import raw Json',
+    label: 'Json',
+    placeholder: 'Paste your Json here',
+    onConfirm: async (value) => {
+      if (isWhitespace(value)) return false;
+      try {
+        const workflows = await importFromRawJson(value);
+        await checkWorkflowPermissions(Object.values(workflows));
+        return true;
+      } catch (error) {
+        console.error(error);
+        toast.error('Invalid Json');
+        return false;
+      }
+    },
+  });
 }
 
 const shortcut = useShortcut(['action:search', 'action:new'], ({ id }) => {

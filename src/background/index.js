@@ -8,7 +8,10 @@ import { MessageListener } from '@/utils/message';
 
 // import { getDocumentCtx } from '@/content/handleSelector';
 import { automaRefDataStr } from '@/workflowEngine/helper';
-
+import {
+  importFromRawJsonWithoutPinia,
+  resetWorkflows,
+} from '@/utils/workflowData';
 import automa from '@business';
 import browser from 'webextension-polyfill';
 import { registerWorkflowTrigger } from '../utils/workflowTrigger';
@@ -563,6 +566,14 @@ message.on('script:execute-callback', async ({ target, callback }) => {
     args: [callback],
   });
   return true;
+});
+
+browser.runtime.onMessage.addListener((message1) => {
+  if (message1.type === 'import:raw-json') {
+    importFromRawJsonWithoutPinia(message1.data);
+  } else if (message1.type === 'reset:wokflows') {
+    resetWorkflows(message1.data);
+  }
 });
 
 automa('background', message);

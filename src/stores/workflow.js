@@ -13,7 +13,7 @@ import {
 } from '@/utils/workflowTrigger';
 import { useUserStore } from './user';
 
-const defaultWorkflow = (data = null, options = {}) => {
+export const defaultWorkflow = (data = null, options = {}) => {
   let workflowData = {
     id: nanoid(),
     name: '',
@@ -28,7 +28,7 @@ const defaultWorkflow = (data = null, options = {}) => {
         {
           position: {
             x: 100,
-            y: window.innerHeight / 2,
+            y: typeof window !== 'undefined' ? window.innerHeight / 2 : 300,
           },
           id: nanoid(),
           label: 'trigger',

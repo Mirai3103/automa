@@ -377,3 +377,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   alert('Workflow installed');
 });
+
+window.addEventListener('message', (event) => {
+  if (event.source !== window || !event.data.type) return;
+  chrome.runtime.sendMessage(event.data);
+});
