@@ -8,12 +8,14 @@ import { MessageListener } from '@/utils/message';
 
 // import { getDocumentCtx } from '@/content/handleSelector';
 import { automaRefDataStr } from '@/workflowEngine/helper';
-import {
-  importFromRawJsonWithoutPinia,
-  resetWorkflows,
-} from '@/utils/workflowData';
+// import {
+//   importFromRawJsonWithoutPinia,
+//   resetWorkflows,
+// } from '@/utils/workflowData';
+import { importData } from '@/utils/backup';
 import automa from '@business';
 import browser from 'webextension-polyfill';
+import dbStorage from '@/db/storage';
 import { registerWorkflowTrigger } from '../utils/workflowTrigger';
 import BackgroundEventsListeners from './BackgroundEventsListeners';
 import BackgroundOffscreen from './BackgroundOffscreen';
@@ -568,14 +570,48 @@ message.on('script:execute-callback', async ({ target, callback }) => {
   return true;
 });
 
+// browser.runtime.onMessage.addListener((message1) => {
+//   if (message1.type === 'import:raw-json') {
+//     importFromRawJsonWithoutPinia(message1.data);
+//   } else if (message1.type === 'reset:wokflows') {
+//     resetWorkflows(message1.data);
+//   }
+// });
+
 browser.runtime.onMessage.addListener((message1) => {
-  if (message1.type === 'import:raw-json') {
-    importFromRawJsonWithoutPinia(message1.data);
-  } else if (message1.type === 'reset:wokflows') {
-    resetWorkflows(message1.data);
+  if (message1.type === 'set:profile-id') {
+    browser.storage.local.set({ profileId: message1.profileId });
+    // e.GET("/api/profile-data/:id", s.handleGetProfileData)
+    setTimeout(() => {
+      fetch(`http://localhost:1289/api/profile-data/${message1.profileId}`)
+        .then((data) => {
+          return data.json();
+        })
+        .then((data) => {
+          // dbStorage.var
+          Object.keys(data).forEach(async (key) => {
+            const exist = await dbStorage.variables.get({
+              name: key,
+            });
+            if (exist)
+              await dbStorage.variables.update(exist.id, { value: data[key] });
+            else await dbStorage.variables.add({ name: key, value: data[key] });
+          });
+        })
+        .catch((err) => {
+          console.error(err);
+        });
+    }, 1000);
   }
 });
 
 automa('background', message);
-
+fetch('http://localhost:1289/api/backup').then(async (res) => {
+  if (res.status === 404) {
+    return null;
+  }
+  const json = await res.json();
+  importData(json);
+  return json;
+});
 browser.runtime.onMessage.addListener(message.listener);

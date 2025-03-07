@@ -16,6 +16,9 @@ export async function exportData() {
 }
 
 export async function importData({ storage, storageDb }) {
+  if (!storage || !storageDb) {
+    return false;
+  }
   try {
     await browser.storage.local.clear();
     await browser.storage.local.set(storage);

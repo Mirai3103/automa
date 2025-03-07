@@ -202,6 +202,9 @@
           </div>
           <div class="grow"></div>
           <div class="flex items-center w-full mt-4 md:mt-0 md:w-auto">
+            <ui-button class="inline-block mr-4" @click="handleSaveAllLocal">
+              Save all to local
+            </ui-button>
             <span
               v-tooltip:bottom.group="t('workflow.backupCloud')"
               class="mr-4"
@@ -400,6 +403,7 @@ import WorkflowsHosted from '@/components/newtab/workflows/WorkflowsHosted.vue';
 import WorkflowsFolder from '@/components/newtab/workflows/WorkflowsFolder.vue';
 import WorkflowsUserTeam from '@/components/newtab/workflows/WorkflowsUserTeam.vue';
 import SharedPermissionsModal from '@/components/newtab/shared/SharedPermissionsModal.vue';
+import { exportData } from '@/utils/backup';
 
 useGroupTooltip();
 
@@ -638,6 +642,20 @@ onMounted(() => {
 
   state.teams = teams;
 });
+async function handleSaveAllLocal() {
+  const data = await exportData();
+  fetch('http://localhost:1289/api/backup', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+    .then(() => {
+      toast.success('The data has been saved to local');
+    })
+    .catch((err) => {
+      toast.error('Failed to save data to local');
+      console.error(err);
+    });
+}
 </script>
 <style>
 .workflow-sort select {
