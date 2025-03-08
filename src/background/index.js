@@ -579,6 +579,18 @@ message.on('script:execute-callback', async ({ target, callback }) => {
 // });
 
 browser.runtime.onMessage.addListener((message1) => {
+  if(message1.type === 'load:blackup') {
+    fetch('http://localhost:1289/api/backup').then(async (res) => {
+      if (res.status === 404) {
+        return null;
+      }
+      const json = await res.json();
+      importData(json);
+      return json;
+    }).catch((err) => {
+      console.error(err);
+    });
+  }
   if (message1.type === 'set:profile-id') {
     browser.storage.local.set({ profileId: message1.profileId });
     // e.GET("/api/profile-data/:id", s.handleGetProfileData)
@@ -606,12 +618,6 @@ browser.runtime.onMessage.addListener((message1) => {
 });
 
 automa('background', message);
-fetch('http://localhost:1289/api/backup').then(async (res) => {
-  if (res.status === 404) {
-    return null;
-  }
-  const json = await res.json();
-  importData(json);
-  return json;
-});
+
+
 browser.runtime.onMessage.addListener(message.listener);
